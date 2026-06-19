@@ -94,43 +94,49 @@ export default function Home() {
   const handleSubmit = async () => {
     if (!file) { setErrorMsg('Bitte einen Beleg hochladen.'); setStatus('error'); return }
     if (!anlass.trim()) { setErrorMsg('Bitte einen Anlass angeben.'); setStatus('error'); return }
+
     setStatus('loading')
     setErrorMsg('')
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const base64 = e.target.result.split(',')[1]
-      try {
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileData: base64,
-            fileName: file.name,
-            fileType: file.type,
-            anlass: anlass.trim(),
-            teilnehmer: teilnehmer.trim(),
-          }),
-        })
-        const data = await res.json()
-        if (res.ok) {
-          setStatus('success')
-          setTimeout(() => {
-            setFile(null)
-            setPreview(null)
-            setAnlass('')
-            setTeilnehmer('')
-            setStatus(null)
-          }, 3000)
-        } else {
-          setErrorMsg(data.error || 'Unbekannter Fehler')
-          setStatus('error')
-        }
-      } catch (err) {
-        setErrorMsg('Netzwerkfehler – bitte erneut versuchen.')
+
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileData: base64,
+          fileName: file.name,
+          fileType: file.type,
+          anlass: anlass.trim(),
+          teilnehmer: teilnehmer.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setStatus('success')
+        setTimeout(() => {
+          setFile(null)
+          setPreview(null)
+          setAnlass('')
+          setTeilnehmer('')
+          setStatus(null)
+        }, 3000)
+      } else {
+        setErrorMsg(data.error || 'Unbekannter Fehler')
         setStatus('error')
       }
+    } catch (err) {
+      setErrorMsg('Fehler: ' + err.message)
+      setStatus('error')
     }
-    reader.readAsDataURL(file)
   }
 
   return (
