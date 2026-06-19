@@ -11,11 +11,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const webhookUrl = process.env.MAKE_WEBHOOK_URL
-  if (!webhookUrl) {
-    return res.status(500).json({ error: 'MAKE_WEBHOOK_URL nicht konfiguriert' })
-  }
-
   try {
     const { fileData, fileName, fileType, anlass, teilnehmer } = req.body
 
@@ -23,7 +18,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Fehlende Pflichtfelder' })
     }
 
-    const makeResponse = await fetch(webhookUrl, {
+    const webhookRes = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/webhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -36,13 +31,12 @@ export default async function handler(req, res) {
       }),
     })
 
-    if (!makeResponse.ok) {
-      const errorText = await makeResponse.text()
-      return res.status(502).json({ error: 'Make Webhook Fehler', details: errorText })
+    if (!webhookRes.ok) {
+      return res.status(502).json({ error: 'Webhook Fehler' })
     }
 
-    return res.status(200).json({ success: true, message: 'Beleg erfolgreich übermittelt' })
+    return res.status(200).json({ success: true })
   } catch (error) {
-    return res.status(500).json({ error: 'Interner Fehler', details: error.message })
+    return res.status(500).json({ error: error.message })
   }
 }
