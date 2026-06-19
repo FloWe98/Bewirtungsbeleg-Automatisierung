@@ -12,7 +12,6 @@ export default async function handler(req, res) {
   try {
     const { fileData, fileName, fileType, anlass, teilnehmer } = req.body
 
-    // 1. Claude extrahiert die Belegdaten
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -64,7 +63,10 @@ Falls ein Wert nicht lesbar ist, setze null.`,
     const raw = claudeData.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
     const extracted = JSON.parse(raw)
 
-    // 2. Fertige Daten an Make schicken
+    const belegDatum = new Date(extracted.datum)
+    const jahr = belegDatum.getFullYear().toString()
+    const monat = belegDatum.toLocaleString('de-DE', { month: 'long' })
+
     await fetch(process.env.MAKE_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -76,6 +78,8 @@ Falls ein Wert nicht lesbar ist, setze null.`,
         fileType,
         fileData,
         kategorie: 'Bewirtungsbelege',
+        jahr,
+        monat,
         uploadedAt: new Date().toISOString(),
       }),
     })
